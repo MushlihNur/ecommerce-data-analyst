@@ -9,8 +9,8 @@ from streamlit_folium import st_folium
 
 # Fungsi untuk memuat data
 def load_data():
-    # Ganti "data/all_data.csv" dengan path ke data Anda
-    all_df = pd.read_csv("data/all_data.csv")
+    # Ganti "all_data.csv" dengan path ke data Anda
+    all_df = pd.read_csv("dashboard/all_data.csv")
     all_df = all_df[['customer_city', 'customer_state', 'customer_unique_id', 'product_category_name_english']].drop_duplicates()
     return all_df
 

@@ -3,6 +3,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
+import folium
+from folium.plugins import MarkerCluster
+from streamlit_folium import st_folium
 
 # Fungsi untuk memuat data
 def load_data():
@@ -72,36 +75,40 @@ elif view_type == "Top Negara Bagian":
 elif view_type == "Peta Geografis":
     st.title("Peta Geografis Konsentrasi Pelanggan")
 
+    # Load data geolocation
     geolocation_df = pd.read_csv("data/geolocation_dataset.csv")
     city_coordinates = geolocation_df[['geolocation_city', 'geolocation_lat', 'geolocation_lng']]
     city_coordinates.columns = ['customer_city', 'latitude', 'longitude']
 
     # Gabungkan data kota dengan koordinat, hanya ambil kota yang relevan
     city_data = pd.merge(
-        top_cities,
+        city_customer_count,
         city_coordinates,
         on='customer_city',
         how='inner',
     )
 
-    # Pastikan tidak ada nilai kosong (drop NaN)
-    city_data = city_data.dropna(subset=['latitude', 'longitude'])
+    # Ringkas data agar lebih ringan (misalnya, ambil 50 kota dengan pelanggan terbanyak)
+    city_data = city_data.sort_values(by='customer_count', ascending=False).head(50)
 
-    # Peta menggunakan Plotly
-    fig = px.scatter_mapbox(
-        city_data,
-        lat="latitude",
-        lon="longitude",
-        size="customer_count",
-        hover_name="customer_city",
-        color="customer_count",
-        color_continuous_scale=px.colors.sequential.Blues,
-        size_max=30,
-        zoom=4,
-        mapbox_style="open-street-map",
-        title="Peta Konsentrasi Pelanggan Berdasarkan Kota"
-    )
-    st.plotly_chart(fig)
+    # Titik pusat peta (gunakan rata-rata koordinat)
+    center_lat = city_data['latitude'].mean()
+    center_lon = city_data['longitude'].mean()
+    map_geographic = folium.Map(location=[center_lat, center_lon], zoom_start=5)
+
+    # Tambahkan marker cluster
+    marker_cluster = MarkerCluster().add_to(map_geographic)
+    for _, row in city_data.iterrows():
+        folium.Marker(
+            location=[row['latitude'], row['longitude']],
+            popup=(
+                f"Kota: {row['customer_city']}<br>"
+                f"Jumlah Pelanggan: {row['customer_count']}"
+            ),
+        ).add_to(marker_cluster)
+
+    # Tampilkan peta di Streamlit menggunakan st_folium
+    st_data = st_folium(map_geographic, width=700, height=500)
 
     # Tampilkan tabel data kota dengan koordinat
     st.write("Tabel Data Kota dengan Konsentrasi Pelanggan dan Koordinat:")
